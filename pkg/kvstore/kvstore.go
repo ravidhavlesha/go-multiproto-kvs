@@ -1,34 +1,57 @@
 package kvstore
 
-import "sync"
+import (
+	"errors"
+	"log"
+	"sync"
+)
+
+type KVStoreInterface interface {
+	Get(key string) (string, bool)
+	Set(key, value string) error
+	Delete(key string) error
+}
 
 type KVStore struct {
-	store map[string]string
-	mu    sync.RWMutex
+	store sync.Map
 }
 
 func NewKVStore() *KVStore {
-	return &KVStore{store: make(map[string]string)}
+	return &KVStore{}
 }
 
 func (kvs *KVStore) Get(key string) (string, bool) {
-	kvs.mu.RLock()
-	defer kvs.mu.RUnlock()
+	value, exists := kvs.store.Load(key)
+	if exists {
+		return value.(string), true
+	}
 
-	value, exists := kvs.store[key]
-	return value, exists
+	return "", false
 }
 
-func (kvs *KVStore) Set(key, value string) {
-	kvs.mu.Lock()
-	defer kvs.mu.Unlock()
+func (kvs *KVStore) Set(key, value string) error {
+	if key == "" {
+		return errors.New("key cannot be empty")
+	}
 
-	kvs.store[key] = value
+	kvs.store.Store(key, value)
+	log.Printf("Set key: %s with value: %s \n", key, value)
+
+	return nil
 }
 
-func (kvs *KVStore) Delete(key string) {
-	kvs.mu.Lock()
-	defer kvs.mu.Unlock()
+func (kvs *KVStore) Delete(key string) error {
+	if key == "" {
+		return errors.New("key cannot be empty")
+	}
 
-	delete(kvs.store, key)
+	_, exists := kvs.Get(key)
+	if !exists {
+		return errors.New("key does not exists")
+	}
+
+	kvs.store.Delete(key)
+	log.Printf("Delete key: %s\n", key)
+
+	return nil
 }

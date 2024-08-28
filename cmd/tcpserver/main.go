@@ -12,6 +12,6 @@ func main() {
 	tcpServer := tcp.NewTCPServer(":8080", kvStore)
 
 	if err := tcpServer.Start(); err != nil {
-		log.Fatalf("Error: %v", err)
+		log.Fatalf("Error starting TCP server: %v", err)
 	}
 }

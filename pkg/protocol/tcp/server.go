@@ -2,6 +2,7 @@ package tcp
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -23,7 +24,7 @@ func NewTCPServer(address string, kvStore *kvstore.KVStore) *TCPServer {
 func (server *TCPServer) Start() error {
 	listner, err := net.Listen("tcp", server.address)
 	if err != nil {
-		return fmt.Errorf("failed to listen to tcp server: %v", err)
+		return fmt.Errorf("failed to listen on %s: %w", server.address, err)
 	}
 	defer listner.Close()
 
@@ -32,15 +33,19 @@ func (server *TCPServer) Start() error {
 	for {
 		conn, err := listner.Accept()
 		if err != nil {
-			log.Printf("TCP server failed to accept connection: %v", err)
+			log.Printf("failed to accept connection: %v", err)
 			continue
 		}
+		log.Printf("Client connected from %s", conn.RemoteAddr().String())
 		go server.handleClient(conn)
 	}
 }
 
 func (server *TCPServer) handleClient(conn net.Conn) {
-	defer conn.Close()
+	defer func() {
+		log.Printf("Client disconnected from %s", conn.RemoteAddr().String())
+		conn.Close()
+	}()
 
 	scanner := bufio.NewScanner(conn)
 	for scanner.Scan() {
@@ -48,20 +53,30 @@ func (server *TCPServer) handleClient(conn net.Conn) {
 
 		line := scanner.Text()
 
-		response := server.handleCommand(line)
-		_, err := conn.Write([]byte(response + "\n"))
+		response, err := server.handleCommand(line)
 		if err != nil {
-			log.Printf("TCP server failed to write data to client: %v", err)
-			return
+			log.Printf("command handling error: %v", err)
+			_, _ = conn.Write([]byte("Error: " + err.Error() + "\n"))
+			continue
 		}
+
+		_, err = conn.Write([]byte(response + "\n"))
+		if err != nil {
+			log.Printf("failed to write response to client: %v", err)
+			continue
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		log.Printf("connection error: %v", err)
 	}
 }
 
-func (server *TCPServer) handleCommand(line string) string {
-	parts := strings.Fields(line)
+func (server *TCPServer) handleCommand(line string) (string, error) {
+	parts := strings.SplitN(line, " ", 3)
 
 	if len(parts) < 1 {
-		return "Error: Invalid command"
+		return "", errors.New("invalid command")
 	}
 
 	command := strings.ToUpper(parts[0])
@@ -69,34 +84,35 @@ func (server *TCPServer) handleCommand(line string) string {
 	switch command {
 	case "GET":
 		if len(parts) != 2 {
-			return "Usage: GET <key>"
+			return "", errors.New("usage: GET <key>")
 		}
-		key := parts[1]
-		value, exists := server.kvStore.Get(key)
+		value, exists := server.kvStore.Get(parts[1])
 		if !exists {
-			return "Error: Key not found"
+			return "", errors.New("key not found")
 		}
-		return value
+		return value, nil
 
 	case "SET":
 		if len(parts) != 3 {
-			return "Usage: SET <key> <value>"
+			return "", errors.New("usage: SET <key> <value>")
 		}
-		key := parts[1]
-		value := parts[2]
-		server.kvStore.Set(key, value)
-		return "OK"
+		if err := server.kvStore.Set(parts[1], parts[2]); err != nil {
+			return "", fmt.Errorf("failed to set value: %w", err)
+		}
+		return "OK", nil
 
 	case "DELETE":
 		if len(parts) != 2 {
-			return "Usage: DELETE <key>"
+			return "", errors.New("usage: DELETE <key>")
 		}
-		key := parts[1]
-		server.kvStore.Delete(key)
-		return "OK"
+
+		if err := server.kvStore.Delete(parts[1]); err != nil {
+			return "", fmt.Errorf("failed to delete key: %w", err)
+		}
+		return "OK", nil
 
 	default:
-		return "Error: Unknown command"
+		return "", errors.New("unknown command")
 	}
 
 }
