@@ -12,14 +12,17 @@ type KVStoreInterface interface {
 	Delete(key string) error
 }
 
+// KVStore is a simple in-memory key-value store with thread-safe access.
 type KVStore struct {
 	store sync.Map
 }
 
+// NewKVStore initializes a new KVStore
 func NewKVStore() *KVStore {
 	return &KVStore{}
 }
 
+// Get retrieves a value for a given key from the store. Returns an empty string if the key does not exists.
 func (kvs *KVStore) Get(key string) (string, bool) {
 	value, exists := kvs.store.Load(key)
 	if exists {
@@ -29,6 +32,7 @@ func (kvs *KVStore) Get(key string) (string, bool) {
 	return "", false
 }
 
+// Set stores a key-value pair inthe store.
 func (kvs *KVStore) Set(key, value string) error {
 	if key == "" {
 		return errors.New("key cannot be empty")
@@ -40,6 +44,7 @@ func (kvs *KVStore) Set(key, value string) error {
 	return nil
 }
 
+// Delete removes a key-value pair from the store.
 func (kvs *KVStore) Delete(key string) error {
 	if key == "" {
 		return errors.New("key cannot be empty")

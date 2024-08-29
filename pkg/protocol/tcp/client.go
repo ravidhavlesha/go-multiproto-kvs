@@ -6,16 +6,19 @@ import (
 	"net"
 )
 
+// TCPClient represents a TCP client.
 type TCPClient struct {
 	address string
 	conn    net.Conn
 	scanner *bufio.Scanner
 }
 
+// NewTCPClient initializes a new TCP client
 func NewTCPClient(address string) *TCPClient {
 	return &TCPClient{address: address}
 }
 
+// Connect establishes to the TCP server
 func (client *TCPClient) Connect() error {
 	conn, err := net.Dial("tcp", client.address)
 	if err != nil {
@@ -28,6 +31,7 @@ func (client *TCPClient) Connect() error {
 	return nil
 }
 
+// Send sends a command to the TCP server
 func (client *TCPClient) Send(cmd string) error {
 	if client.conn == nil {
 		return fmt.Errorf("connection is not established")
@@ -40,6 +44,7 @@ func (client *TCPClient) Send(cmd string) error {
 	return nil
 }
 
+// Receive reads and return the response from the TCP server
 func (client *TCPClient) Receive() (string, error) {
 	if client.scanner == nil {
 		return "", fmt.Errorf("scanner is not initialized")
@@ -49,6 +54,7 @@ func (client *TCPClient) Receive() (string, error) {
 		return client.scanner.Text(), nil
 	}
 
+	// Log the error if the scanner encounters one.
 	if err := client.scanner.Err(); err != nil {
 		return "", fmt.Errorf("error reading response from server: %w", err)
 	}
@@ -56,6 +62,7 @@ func (client *TCPClient) Receive() (string, error) {
 	return "", fmt.Errorf("server closed the connection")
 }
 
+// Close closes the connection to the TCP server
 func (client *TCPClient) Close() error {
 	if client.conn != nil {
 		return client.conn.Close()

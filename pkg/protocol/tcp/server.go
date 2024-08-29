@@ -12,15 +12,18 @@ import (
 	"github.com/ravidhavlesha/go-multiproto-kvs/pkg/kvstore"
 )
 
+// TCPServer represents a TCP server.
 type TCPServer struct {
 	address string
 	kvStore *kvstore.KVStore
 }
 
+// NewTCPServer initializes a new TCP server
 func NewTCPServer(address string, kvStore *kvstore.KVStore) *TCPServer {
 	return &TCPServer{address: address, kvStore: kvStore}
 }
 
+// Start starts a TCP server that listens to incoming connections.
 func (server *TCPServer) Start() error {
 	listner, err := net.Listen("tcp", server.address)
 	if err != nil {
@@ -37,10 +40,13 @@ func (server *TCPServer) Start() error {
 			continue
 		}
 		log.Printf("Client connected from %s", conn.RemoteAddr().String())
+
+		// Handle the connection in a new goroutine for concurrency.
 		go server.handleClient(conn)
 	}
 }
 
+// handleClient manages a single client connection.
 func (server *TCPServer) handleClient(conn net.Conn) {
 	defer func() {
 		log.Printf("Client disconnected from %s", conn.RemoteAddr().String())
@@ -49,10 +55,12 @@ func (server *TCPServer) handleClient(conn net.Conn) {
 
 	scanner := bufio.NewScanner(conn)
 	for scanner.Scan() {
+		// Set a read deadline to avoid blocking forever
 		conn.SetReadDeadline(time.Now().Add(5 * time.Minute))
 
 		line := scanner.Text()
 
+		// Handle the message and respond to the client
 		response, err := server.handleCommand(line)
 		if err != nil {
 			log.Printf("command handling error: %v", err)
@@ -67,11 +75,13 @@ func (server *TCPServer) handleClient(conn net.Conn) {
 		}
 	}
 
+	// Log the error if the scanner encounters one.
 	if err := scanner.Err(); err != nil {
 		log.Printf("connection error: %v", err)
 	}
 }
 
+// handleCommand processes a client command and interacts with the KVStore.
 func (server *TCPServer) handleCommand(line string) (string, error) {
 	parts := strings.SplitN(line, " ", 3)
 
