@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package kvstore;
+
+// The kvstore service definition.
+service KVStore {
+  // Get a value by key.
+  rpc Get(GetRequest) returns (GetResponse);
+
+  // Set a value by key.
+  rpc Set(SetRequest) returns (SetResponse);
+
+  // Delete a value by key.
+  rpc Delete(DeleteRequest) returns (DeleteResponse);
+}
+
+// The request message for the Get method.
+message GetRequest {
+  string key = 1;
+}
+
+// The response message for the Get method.
+message GetResponse {
+  string value = 1;
+  bool found = 2;
+}
+
+// The request message for the Set method.
+message SetRequest {
+  string key = 1;
+  string value = 2;
+}
+
+// The response message for the Set method.
+message SetResponse {
+  string status = 1;
+}
+
+// The request message for the Delete method.
+message DeleteRequest {
+  string key = 1;
+}
+
+// The response message for the Delete method.
+message DeleteResponse {
+  string status = 1;
+}
